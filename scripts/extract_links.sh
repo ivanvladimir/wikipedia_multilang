@@ -32,7 +32,7 @@ function extract {
 		done
 		EXP=`join_by '\|' ${ARGS[@]}`
 		echo "Looking for $EXP ..."
-		python python/mysqldump_to_csv.py data/wiki${LANG}.links.sql | grep ",\(${EXP}\)," > data/${LANG}wiki.links.csv
+		python python/mysqldump_to_csv.py data/${LANG}wiki.links.sql | grep ",\(${EXP}\)," > data/${LANG}wiki.links.csv
 	done
 }
 

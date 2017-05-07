@@ -46,7 +46,7 @@ function download {
 
 
 mkdir -p data
-download tk 20170420
+#download tk 20170420
 download es 20170420
 download en 20170420
 download pl 20170420
