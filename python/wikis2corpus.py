@@ -74,28 +74,24 @@ if __name__ == "__main__":
         verbose = lambda *a: None 
 
     # Reading indexes
-    indices={}
-    indices_docs={}
-    title_docs={}
+    linked=defaultdict(lambda : defaultdict(set))
+    indices_docs=defaultdict(set)
+    title_docs=defaultdict(set)
     verbose("Reading documents with links")
     for lang in args.LANG:
-        title_docs[lang]=set()
-        indices_docs[lang]=set()
-
-    for lang in args.LANG:
-        #indices[lang]=defaultdict(lambda : defaultdict(str))
         with open(os.path.join(args.idir,"{0}wiki.links.csv".format(lang))) as FILE:
             for line in FILE:
+                line=line.strip()
                 bits=line.split(',')
                 indices_docs[lang].add(int(bits[0]))
-                #indices[lang][bits[1]][int(bits[0])]=bits[2]
                 title_docs[bits[1]].add(bits[2])
+                linked[bits[1]][bits[2]].add(int(bits[0]))
         verbose("Documents with links in ",lang," ",len(indices_docs[lang]))
 
     
     verbose("Documents link to")
     for lang in args.LANG:
-        verbose("Linked documents in ",lang," ",len(title_docs[lang]))
+        verbose("Linked documents in ",lang," ",len(linked[lang]))
 
     order_indices=[(lang,len(doc)) for lang,doc in indices_docs.iteritems()]
     order_indices.sort(key=lambda tup: tup[1],reverse=True)
@@ -116,144 +112,125 @@ if __name__ == "__main__":
     
     verbose("Order of processing languages: ",", ".join([x for x,y in order_indices]))
 
-    sys.exit()
     # Extrayendo los vocabularios
-    re_header = re.compile('<doc id="(\d+)" url="(w+)" title="(w+)"')
-    for lang in args.lang:
-        corpus[lang]=Counter()
+    re_header = re.compile(r'<doc id="(.*)" url="(.*)" title="(.*)">')
+    re_slashdoc = re.compile('</doc>')
+    re_number = re.compile('^\d+$')
+    voca={}
+    vocab_doc={}
+    doc={}
+    index={}
+    position=0
+    positions={}
+    positions_={}
+
+    for lang in [x for x,y in order_indices]:
+        verbose("Extracting articles ",lang)
+        voca[lang]=Counter()
         vocab_doc[lang]=Counter()
-        doc[lang]=Counter()
-    idx=[]
+        doc=Counter()
+        index[lang]={}
+        process=False
+        total_docs=0
+        total_docs_=0
     
+        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE:
+            for line in FILE:
+                line=line.strip()
+                m= re_header.match(line)
+                if m:
+                    if args.max and total_docs==args.max:
+                        break
+                    if total_docs and not total_docs%1000:
+                        print('.',end="")
+                    idx=int(m.group(1))
+                    url=m.group(2)
+                    title=m.group(3)
+                    process=False
+                    if (linked[lang].has_key(title)):
+                        process=True
+                    if process:
+                        index[lang][idx]=(url,title)
+                        if not positions.has_key(idx):
+                            positions[idx]=position
+                            for idx_ in linked[lang][title]:
+                                positions[idx_]=position
+                            position+=1
+                elif re_slashdoc.match(line):
+                    if process:
+                        voca[lang].update(doc)
+                        vocab_doc[lang].update(doc.keys())
+                        total_docs_+=1
+                    doc= Counter()
+                    total_docs+=1
+                else:
+                    if process:
+                        doc.update(line2words(line.strip(),sw[lang]))
+            verbose("\nTotal number of documents ",lang," ",total_docs_," from ", total_docs) 
+            verbose("Vocabulary size ",lang," ",len(voca[lang])) 
+            verbose("Total number of words ",lang, " ",sum(voca[lang].values())) 
+
+
+    nvoca=0
+    for lang in [x for x,y in order_indices]:
+        verbose("\nCorpus for",lang)
+        header=None
+        docs={}
+        total_docs=0
+
+        vocab=[(w,n) for (w,n) in voca[lang].most_common() 
+                if n>=args.cutoff and
+                   (args.min_per_doc==0 or vocab_doc[lang][w]>=args.min_per_doc)
+                   and len(w)>1
+                   and not re_number.match(w)
+                   ]
+        vocab_={}
+        for (i,(w,n)) in enumerate(vocab):
+            vocab_[w]=i+nvoca
+
+        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE:
+            for line in FILE:
+                line=line.strip()
+                m= re_header.match(line)
+                if m:
+                    if args.max and total_docs==args.max:
+                        break
+                    if total_docs and not total_docs%1000:
+                        print('.',end="")
+                    idx=int(m.group(1))
+                    title=m.group(3)
+                    process=False
+                    if (linked[lang].has_key(title)):
+                        process=True
+                elif re_slashdoc.match(line):
+                    if process:
+                        info=[(w,n) for w,n in doc.most_common() if vocab_.has_key(w)] 
+                        docs[positions[idx]]=(idx,info)
+                    doc= Counter()
+                    total_docs+=1
+                else:
+                    if process:
+                        doc.update(line2words(line.strip(),sw[lang]))
+ 
+        verbose("Corpus for",lang)
+        with open(os.path.join(args.odir,"{0}wiki.corpus".format(lang)),'w') as CORPUS,\
+             open(os.path.join(args.odir,"{0}wiki.index".format(lang)),'w') as INDEX:
+                for pos in range(position):
+                    if docs.has_key(pos):
+                        idx,info=docs[pos]
+                        print(len(info)," ".join(["{0}:{1}".format(vocab_[w],n) for w,n in info]),file=CORPUS)
+                        print(idx,"==",index[lang][idx][0],'==',index[lang][idx][1],file=INDEX)
+                    else:
+                        print("",file=CORPUS)
+                        print("",file=INDEX)
+
+        verbose("Creating vocabulary")
+        with open(os.path.join(args.odir,"{0}wiki.voca".format(lang)),'w') as VOCA:
+            for i,(w,n) in enumerate(vocab):
+                print("{0} = {1} = {2} = {3}".format(w,i+nvoca,n,vocab_doc[lang][w]),file=VOCA)
+
+        nvoca+=len(vocab)
+
+        verbose("Total number of words in vocab",len(vocab))
+
     
-    verbose("Extracting articles")
-    for line in codecs.open(opts.WIKI,encoding="utf-8"):
-        if re_header.match(line):
-            if opts.max and len(idx)==opts.max:
-                break
-            if not len(idx)%1000:
-                print('.',end="")
-            corpus.update(doc)
-            vocab_doc.update(doc.keys())
-            doc= Counter()
-            idx.append(line[2:-2].strip())
-            doc.update(line2words(line[2:-2].strip(),[]))
-        else:
-            doc.update(line2words(line.strip(),sws))
-    corpus.update(doc)
-  
-    verbose("Total number of documents",len(idx)) 
-    verbose("Vocabulary size",len(corpus)) 
-    verbose("Total number of words",sum(corpus.values())) 
-
-
-    sys.exit()
-
-    files=[]
-    indixes=[]
-    # Creating splits
-    first_split=None
-    verbose("Creating splits")
-    if len(opts.splits)>0:
-        if not sum([float(y) for x,y in opts.splits ]) == 100.0:
-            p.error("Split options defined but it does not adds to 100%")
-        random.shuffle(idx)
-        splits=[]
-        ini=0
-        first_split=opts.splits[0][0]
-        for x,y in opts.splits:
-            y=int(y)
-            files.append(codecs.open(os.path.join(opts.odir,opts.corpus+"."+x+".corpus"),'w',encoding='utf-8'))
-            indixes.append(codecs.open(os.path.join(opts.odir,opts.corpus+"."+x+".index"),'w',encoding='utf-8'))
-            splits.append(dict([ (title,(files[-1],x,indixes[-1])) for title in idx[ini:ini+int(y*0.01*len(idx))]]))
-            ini+=int(y*0.01*len(idx))
-        splits.append(dict([ (title,(files[-1],x,indixes[-1])) for title in idx[ini:]]))
-    else:
-        files.append(codecs.open(os.path.join(opts.odir,opts.corpus+".corpus"),'w',encoding='utf-8'))
-        indixes.append(codecs.open(os.path.join(opts.odir,opts.corpus+".index"),'w',encoding="utf-8"))
-        first_split=""
-        splits=[dict([(title,(files[-1],"",indixes[-1])) for title in idx])]
-
-    splits_={}
-    for split in splits:
-        splits_.update(split)
-    splits=splits_
-
-
-    # Extracting voca first split
-    vocab=Counter()
-    header=None
-    ii=0
-    if len(opts.splits)<=1:
-        vocab=corpus
-        vocab_doc=vocab_doc
-    else:
-        vocab_doc=Counter()
-        for line in codecs.open(opts.WIKI,encoding="utf-8"):
-            if re_header.match(line):
-                if opts.max and ii==opts.max:
-                    break
-
-                if not ii%1000:
-                    print('.',end="")
- 
-                header=line[2:-2].strip()
-                if splits[header][1]==first_split:
-                    vocab.update(doc)
-                    vocab_doc=update(doc.keys())
-                    doc.update(line2words(header,[]))
-                doc= Counter()
-                ii+=1
-            else:
-                if splits[header][1]==first_split:
-                    doc.update(line2words(line.strip(),sws))
-        if splits[header][1]==first_split:
-            vocab.update(doc)
-
-    verbose("Total number of words in vocab",sum(vocab.values()))
-    verbose("Total number of words new words per document",sum(vocab_doc.values()))
-    vocab=[(w,n) for (w,n) in vocab.most_common() 
-            if n>=opts.cutoff and
-               (opts.min_per_doc==0 or vocab_doc[w]>=opts.min_per_doc)]
-    vocab_={}
-    for (i,(w,n)) in enumerate(vocab):
-        vocab_[w]=i
-
-
-    ii=0
-    ndocs=0
-    header=None
-    verbose("Creating corpus")
-    for line in codecs.open(opts.WIKI,encoding="utf-8"):
-        if re_header.match(line):
-            if opts.max and ii==opts.max:
-                break
-            if not ii%1000:
-                print('.',end="")
-            if header:
-                info=["{0}:{1}".format(vocab_[w],n) for w,n in doc.most_common() if vocab_.has_key(w)] 
-                print(len(info)," ".join(info),file=splits[header][0])
-                print(ndocs,line.strip(),file=splits[header][2])
-                ndocs+=1
-            doc= Counter()
-            ii+=1
-            header=line[2:-2].strip()
-            doc.update(line2words(header,[]))
-        else:
-            doc.update(line2words(line.strip(),sws))
-    if header:
-        info=["{0}:{1}".format(vocab_[w],n) for w,n in doc.most_common() if vocab_.has_key(w)] 
-        print(len(info)," ".join(info),file=splits[header][0])
-        print(ndocs,line.strip(),file=splits[header][2])
-
-    for file in files:
-        file.close()
-    for file in indixes:
-        file.close()
- 
-    verbose("Creating vocabulary")
-    vocabf=codecs.open(os.path.join(opts.odir,opts.corpus+".vocab"),"w",encoding='utf-8')
-    for i,(w,n) in enumerate(vocab):
-        print(u"{0} = {1} = {2} = {3}".format(w,i,n,vocab_doc[w]),file=vocabf)
-    vocabf.close()
-
