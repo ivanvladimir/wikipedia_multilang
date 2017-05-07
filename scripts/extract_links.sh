@@ -38,5 +38,5 @@ function extract {
 
 
 mkdir -p data
-extract tk es en pl pt de cy fa fi fr he  it ru  el ar 
-#extract it fi pl
+#extract tk es en pl pt de cy fa fi fr he  it ru  el ar 
+extract it fi pl
