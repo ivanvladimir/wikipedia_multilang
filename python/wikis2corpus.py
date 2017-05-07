@@ -76,19 +76,30 @@ if __name__ == "__main__":
     # Reading indexes
     indices={}
     indices_docs={}
+    title_docs={}
+    verbose("Reading documents with links")
     for lang in args.LANG:
-        indices[lang]=defaultdict(lambda : defaultdict(str))
+        title_docs[lang]=set()
         indices_docs[lang]=set()
+
+    for lang in args.LANG:
+        #indices[lang]=defaultdict(lambda : defaultdict(str))
         with open(os.path.join(args.idir,"{0}wiki.links.csv".format(lang))) as FILE:
             for line in FILE:
                 bits=line.split(',')
                 indices_docs[lang].add(int(bits[0]))
-                indices[lang][bits[1]][int(bits[0])]=bits[2]
-        verbose("Lenght of documents in ",lang," ",len(indices_docs[lang]))
+                #indices[lang][bits[1]][int(bits[0])]=bits[2]
+                title_docs[bits[1]].add(bits[2])
+        verbose("Documents with links in ",lang," ",len(indices_docs[lang]))
 
-    order_docs=[(lang,len(doc)) for lang,doc in indices_docs.iteritems()]
-    order_docs.sort(key=lambda tup: tup[1],reverse=True)
-                
+    
+    verbose("Documents link to")
+    for lang in args.LANG:
+        verbose("Linked documents in ",lang," ",len(title_docs[lang]))
+
+    order_indices=[(lang,len(doc)) for lang,doc in indices_docs.iteritems()]
+    order_indices.sort(key=lambda tup: tup[1],reverse=True)
+
     # Reading stopwords
     sw={}
     for lang in args.LANG:
@@ -103,16 +114,18 @@ if __name__ == "__main__":
         verbose("Size of sw for ",lang," ",len(sw[lang]))
     
     
-    verbose("Order of processing languages: ",", ".join([x for x,y in order_docs]))
+    verbose("Order of processing languages: ",", ".join([x for x,y in order_indices]))
 
     sys.exit()
-  
-    # Extrayendo el vocabulario
-    re_header = re.compile('^= ')
-    corpus=Counter()
-    vocab_doc=Counter()
-    doc=Counter()
+    # Extrayendo los vocabularios
+    re_header = re.compile('<doc id="(\d+)" url="(w+)" title="(w+)"')
+    for lang in args.lang:
+        corpus[lang]=Counter()
+        vocab_doc[lang]=Counter()
+        doc[lang]=Counter()
     idx=[]
+    
+    
     verbose("Extracting articles")
     for line in codecs.open(opts.WIKI,encoding="utf-8"):
         if re_header.match(line):
@@ -128,10 +141,13 @@ if __name__ == "__main__":
         else:
             doc.update(line2words(line.strip(),sws))
     corpus.update(doc)
-    
+  
     verbose("Total number of documents",len(idx)) 
     verbose("Vocabulary size",len(corpus)) 
     verbose("Total number of words",sum(corpus.values())) 
+
+
+    sys.exit()
 
     files=[]
     indixes=[]
