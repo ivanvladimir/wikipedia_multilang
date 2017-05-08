@@ -187,44 +187,38 @@ if __name__ == "__main__":
         vocab_={}
         for (i,(w,n)) in enumerate(vocab):
             vocab_[w]=i+nvoca
-
-        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE:
-            for line in FILE:
-                line=line.strip()
-                m= re_header.match(line)
-                if m:
-                    if args.max and total_docs==args.max:
-                        break
-                    if total_docs and not total_docs%1000:
-                        print('.',end="")
-                    idx=int(m.group(1))
-                    title=m.group(3)
-                    process=False
-                    if (linked[lang].has_key(title)):
-                        process=True
-                elif re_slashdoc.match(line):
-                    if process:
-                        info=[(w,n) for w,n in doc.most_common() if vocab_.has_key(w)] 
-                        docs[positions[idx]]=(idx,info)
-                    doc= Counter()
-                    total_docs+=1
-                else:
-                    if process:
-                        doc.update(line2words(line.strip(),sw[lang]))
- 
-        verbose("Corpus for",lang)
-        with open(os.path.join(args.odir,"{0}wiki.corpus".format(lang)),'w') as CORPUS,\
+        total_docs_=0
+        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE,\
+             open(os.path.join(args.odir,"{0}wiki.position.corpus".format(lang)),'w') as CORPUS,\
              open(os.path.join(args.odir,"{0}wiki.index".format(lang)),'w') as INDEX:
-                for pos in range(position):
-                    if docs.has_key(pos):
-                        idx,info=docs[pos]
-                        print(len(info)," ".join(["{0}:{1}".format(vocab_[w],n) for w,n in info]),file=CORPUS)
-                        print(idx,"==",index[lang][idx][0],'==',index[lang][idx][1],file=INDEX)
+                for line in FILE:
+                    line=line.strip()
+                    m= re_header.match(line)
+                    if m:
+                        if args.max and total_docs==args.max:
+                            break
+                        if total_docs and not total_docs%1000:
+                            print('.',end="")
+                        idx=int(m.group(1))
+                        title=m.group(3)
+                        process=False
+                        if (linked[lang].has_key(title)):
+                            process=True
+                    elif re_slashdoc.match(line):
+                        if process:
+                            info=[(w,n) for w,n in doc.most_common() if vocab_.has_key(w)] 
+                            #docs[positions[idx]]=(idx,info)
+                            print(positions[idx]," ",len(info)," ".join(["{0}:{1}".format(vocab_[w],n) for w,n in info]),file=CORPUS)
+                            print(positions[idx],"==",idx,"==",index[lang][idx][0],'==',index[lang][idx][1],file=INDEX)
+                            total_docs_+=1
+                        doc= Counter()
+                        total_docs+=1
                     else:
-                        print("",file=CORPUS)
-                        print("",file=INDEX)
-
-        verbose("Creating vocabulary")
+                        if process:
+                            doc.update(line2words(line.strip(),sw[lang]))
+                verbose("\nTotal number of documents ",lang," ",total_docs_," from ", total_docs) 
+     
+        verbose("Creating vocabulary ",lang)
         with open(os.path.join(args.odir,"{0}wiki.voca".format(lang)),'w') as VOCA:
             for i,(w,n) in enumerate(vocab):
                 print("{0} = {1} = {2} = {3}".format(w,i+nvoca,n,vocab_doc[lang][w]),file=VOCA)
