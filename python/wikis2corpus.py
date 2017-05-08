@@ -123,6 +123,7 @@ if __name__ == "__main__":
     position=0
     positions={}
     positions_={}
+    nvoca=0
 
     for lang in [x for x,y in order_indices]:
         verbose("Extracting articles ",lang)
@@ -170,9 +171,6 @@ if __name__ == "__main__":
             verbose("Vocabulary size ",lang," ",len(voca[lang])) 
             verbose("Total number of words ",lang, " ",sum(voca[lang].values())) 
 
-
-    nvoca=0
-    for lang in [x for x,y in order_indices]:
         verbose("\nCorpus for",lang)
         header=None
         docs={}
