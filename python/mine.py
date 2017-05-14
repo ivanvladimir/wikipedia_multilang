@@ -27,12 +27,12 @@ class SMHTopicDiscovery(BaseEstimator):
     def __init__(self,
                  tuple_size = 3,
                  number_of_tuples = None,
-                 table_size = 2**20,
+                 table_size = 2**24,
                  cooccurrence_threshold = 0.14, 
                  min_set_size = 3,
                  cluster_tuple_size = 3,
                  cluster_number_of_tuples = 255,
-                 cluster_table_size = 2**20,
+                 cluster_table_size = 2**24,
                  overlap = 0.7,
                  min_cluster_size = 3):
 
@@ -154,7 +154,7 @@ if __name__ == "__main__":
             verbose("Experiment tuples (r) {0}, Number of tuples (l) {1}".format(r,l))
 
    	model = SMHTopicDiscovery(tuple_size = r,
-                              table_size = 2**22,
+                              table_size = 2**24,
                               number_of_tuples = l,
                               min_cluster_size= opts.min_cluster_size,
                               overlap = opts.thres)
