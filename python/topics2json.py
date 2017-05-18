@@ -65,7 +65,7 @@ if __name__ == "__main__":
     verbose("Reading vocabulary")
     for lang in args.LANG:
     	verbose("Reading vocabulary",lang)
-        with codecs.open(os.path.join(args.idir,"{0}wiki.voca".format(lang)),encoding='iso8859') as LANG:
+        with codecs.open(os.path.join(args.idir,"{0}wiki.voca".format(lang)),encoding='utf8') as LANG:
             for line in LANG:
                 bits=line.strip().split(" = ")
                 w=bits[0]

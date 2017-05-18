@@ -29,13 +29,14 @@ import os.path
 import random
 import re
 import codecs
+import nltk
 random.seed()
 
 from collections import Counter,defaultdict
-punct=re.compile("\w+", re.UNICODE)
+punct=re.compile("[^\s]+", re.UNICODE)
 
 def line2words(line,sws):
-    return [w for w in punct.findall(line.lower()) 
+    return [w for w in nltk.word_tokenize(line.lower()) 
                 if len(w)>0 and not w in sws]
  
 if __name__ == "__main__":
@@ -53,10 +54,10 @@ if __name__ == "__main__":
             action="store", dest="swdir",
             help="stopword directory")
     p.add_argument("--min_per_doc",
-        action="store", dest="min_per_doc", type=int,default=50,
+        action="store", dest="min_per_doc", type=int,default=20,
         help="Minimum words per document [50]")
     p.add_argument("--cutoff",
-        action="store", dest="cutoff", type=int,default=10,
+        action="store", dest="cutoff", type=int,default=30,
         help="Cut off for frecuencies [10]")
     p.add_argument("--max",
         action="store", dest="max", type=int,default=None,
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     # Extrayendo los vocabularios
     re_header = re.compile(r'<doc id="(.*)" url="(.*)" title="(.*)">')
     re_slashdoc = re.compile('</doc>')
-    re_number = re.compile('^\d+$')
+    re_number = re.compile('^\d+\w*$')
     voca={}
     vocab_doc={}
     doc={}
@@ -135,7 +136,7 @@ if __name__ == "__main__":
         total_docs=0
         total_docs_=0
     
-        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE:
+        with codecs.open(os.path.join(args.idir,"{0}wiki.xml".format(lang)),'r','utf8') as FILE:
             for line in FILE:
                 line=line.strip()
                 m= re_header.match(line)
@@ -181,14 +182,16 @@ if __name__ == "__main__":
                    (args.min_per_doc==0 or vocab_doc[lang][w]>=args.min_per_doc)
                    and len(w)>1
                    and not re_number.match(w)
+                   and not w.startswith('formula_')
+                   and not w.startswith('codice_')
                    ]
         vocab_={}
         for (i,(w,n)) in enumerate(vocab):
             vocab_[w]=i+nvoca
         total_docs_=0
-        with open(os.path.join(args.idir,"{0}wiki.xml".format(lang))) as FILE,\
-             open(os.path.join(args.odir,"{0}wiki.position.corpus".format(lang)),'w') as CORPUS,\
-             open(os.path.join(args.odir,"{0}wiki.index".format(lang)),'w') as INDEX:
+        with codecs.open(os.path.join(args.idir,"{0}wiki.xml".format(lang)),'r','utf8') as FILE,\
+             codecs.open(os.path.join(args.odir,"{0}wiki.position.corpus".format(lang)),'w','utf8') as CORPUS,\
+             codecs.open(os.path.join(args.odir,"{0}wiki.index".format(lang)),'w','utf8') as INDEX:
                 for line in FILE:
                     line=line.strip()
                     m= re_header.match(line)
@@ -200,13 +203,13 @@ if __name__ == "__main__":
                         idx=int(m.group(1))
                         title=m.group(3)
                         process=False
-                        if (linked[lang].has_key(title)):
+                        if (linked[lang].has_key(title) and positions.has_key(idx) and index[lang].has_key(idx)):
                             process=True
                     elif re_slashdoc.match(line):
                         if process:
                             info=[(w,n) for w,n in doc.most_common() if vocab_.has_key(w)] 
                             #docs[positions[idx]]=(idx,info)
-                            print(positions[idx]," ",len(info)," ".join(["{0}:{1}".format(vocab_[w],n) for w,n in info]),file=CORPUS)
+                            print(positions[idx]," ",len(info)," ".join(["{0}:{1}".format(vocab_[w],n) for w,n in info if vocab_.has_key(w)]),file=CORPUS)
                             print(positions[idx],"==",idx,"==",index[lang][idx][0],'==',index[lang][idx][1],file=INDEX)
                             total_docs_+=1
                         doc= Counter()
@@ -217,9 +220,9 @@ if __name__ == "__main__":
                 verbose("\nTotal number of documents ",lang," ",total_docs_," from ", total_docs) 
      
         verbose("Creating vocabulary ",lang)
-        with open(os.path.join(args.odir,"{0}wiki.voca".format(lang)),'w') as VOCA:
+        with codecs.open(os.path.join(args.odir,"{0}wiki.voca".format(lang)),'w','utf8') as VOCA:
             for i,(w,n) in enumerate(vocab):
-                print("{0} = {1} = {2} = {3}".format(w,i+nvoca,n,vocab_doc[lang][w]),file=VOCA)
+                print(u"{0} = {1} = {2} = {3}".format(w,i+nvoca,n,vocab_doc[lang][w]),file=VOCA)
 
         nvoca+=len(vocab)
 
