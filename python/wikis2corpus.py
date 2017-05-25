@@ -55,10 +55,10 @@ if __name__ == "__main__":
             help="stopword directory")
     p.add_argument("--min_per_doc",
         action="store", dest="min_per_doc", type=int,default=20,
-        help="Minimum words per document [50]")
+        help="Minimum words per document [20]")
     p.add_argument("--cutoff",
         action="store", dest="cutoff", type=int,default=30,
-        help="Cut off for frecuencies [10]")
+        help="Cut off for frecuencies [30]")
     p.add_argument("--max",
         action="store", dest="max", type=int,default=None,
         help="Max number of documents to process [All]")

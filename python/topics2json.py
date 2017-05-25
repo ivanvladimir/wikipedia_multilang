@@ -96,8 +96,8 @@ if __name__ == "__main__":
     prefix=basename.rsplit('.',1)[0]
     filename_json=os.path.join(args.odir,"{0}.json".format(prefix))
 
-    with open(filename_json,'w') as JSON:
-        json.dump(topics_, JSON, sort_keys=True,
-                indent=4, separators=(',', ': '))
+    with codecs.open(filename_json,'w','utf8') as JSON:
+        json.dump(topics_, JSON, sort_keys=True,ensure_ascii=False,
+        encoding="utf-8",indent=4, separators=(',', ': '))
 
 

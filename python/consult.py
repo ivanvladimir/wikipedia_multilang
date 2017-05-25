@@ -54,16 +54,15 @@ if __name__ == "__main__":
         verbose = lambda *a: None 
 
 
-    with open(args.JSON) as JSON:
-        topics = json.load(JSON)
+    topics = json.load(codecs.open(args.JSON, 'r', 'utf-8'))
 
-        for word in args.WORDS:
-            for topic in topics:
-                if word in [w['Word'] for w in topic['words']]:
-                    print(10*"===")
-                    print("Topic ",topic['id'],)
-                    print("Size",len(topic['words']))
-                    langs=Counter([w['Language'] for w in topic['words'] ])
-                    print("Languajges",u", ".join([u"{0}({1})".format(k,v) for k,v in langs.most_common()]),len(langs))
-                    print("Head (20)",u", ".join([u"{Word}({Language})".format(**w) for w in topic['words'][:20]]))
+    for word in args.WORDS:
+        for topic in topics:
+            if word in [w['Word'] for w in topic['words']]:
+                print(10*"===")
+                print("Topic ",topic['id'],)
+                print("Size",len(topic['words']))
+                langs=Counter([w['Language'] for w in topic['words'] ])
+                print("Languajges",u", ".join([u"{0}({1})".format(k,v) for k,v in langs.most_common()]),len(langs))
+                print(u"Head (40)",u", ".join([u"{Word}({Language})".format(**w) for w in topic['words'][:200]]))
 
