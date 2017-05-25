@@ -42,6 +42,9 @@ if __name__ == "__main__":
     p.add_argument("--odir",default='data',
             action="store", dest="odir",
             help="Output dir for documents [data]")
+    p.add_argument("--min",default=None,type=int,
+            action="store", dest="min",
+            help="Minumum number of terms in topics [0]")
     p.add_argument("-v", "--verbose",
         action="store_true", dest="verbose", default=False,
         help="Verbose mode")
@@ -89,6 +92,8 @@ if __name__ == "__main__":
             topic__['Language']=idx2lang[idx]  
             topic__['Ocurrences']=freq  
             words.append(topic__)
+        if args.min and len(words)<args.min:
+            continue
         topic_['words']=words
         topics_.append(topic_)
 
