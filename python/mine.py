@@ -33,7 +33,7 @@ class SMHTopicDiscovery(BaseEstimator):
                  cluster_tuple_size = 3,
                  cluster_number_of_tuples = 255,
                  cluster_table_size = 2**24,
-                 overlap = 0.7,
+                 overlap = 0.8,
                  min_cluster_size = 3):
 
         self.tuple_size_ = tuple_size
@@ -43,7 +43,7 @@ class SMHTopicDiscovery(BaseEstimator):
             self.number_of_tuples_ = number_of_tuples
         else:
             self.cooccurrence_threshold_ = cooccurrence_threshold
-            self.number_of_tuples_ = int(log(0.5) / log(1.0 - pow(cooccurrence_threshold, tuple_size)))
+            self.number_of_tuples_ = int(math.log(0.5) / math.log(1.0 - pow(cooccurrence_threshold, tuple_size)))
 
         self.table_size_ = table_size
         self.min_set_size_ = min_set_size
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         action="store", dest='cutoff',help="Cutoff of topics [Off]")
     p.add_argument("--min_cluster_size",default=5,type=int,
             action="store", dest='min_cluster_size',help="Minimum size of cluster for default clustering[3]")
-    p.add_argument("--thres",default=0.8,type=float,
+    p.add_argument("--thres",default=0.9,type=float,
             action="store", dest='thres',
             help="Threshold for clustering")
     p.add_argument("-v", "--verbose",

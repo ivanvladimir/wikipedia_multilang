@@ -43,6 +43,9 @@ if __name__ == "__main__":
     p.add_argument("--odir",default='data',
             action="store", dest="odir",
             help="Output dir for documents [data]")
+    p.add_argument("--min",default=None,type=int,
+            action="store", dest="min",
+            help="Minumum number of terms in topics [0]")
     p.add_argument("-v", "--verbose",
         action="store_true", dest="verbose", default=False,
         help="Verbose mode")
@@ -66,25 +69,27 @@ if __name__ == "__main__":
     # Reading vocabulariesa
     verbose("Reading vocabulary")
     for lang in args.LANG:
-    	verbose("Reading vocabulary",lang)
-        with open(os.path.join(args.idir,"{0}wiki.voca".format(lang))) as LANG:
-            for line in LANG:
-                bits=line.strip().split(" = ")
-                w=bits[0]
-                idx=int(bits[1])
-                idx2word[idx]=w
-                word2idx[w]=idx
-                idx2lang[idx]=lang
+    	#  verbose("Reading vocabulary",lang)
+        #  with open(os.path.join(args.idir,"{0}wiki.voca".format(lang))) as LANG:
+        #      for line in LANG:
+        #          bits=line.strip().split(" = ")
+        #          w=bits[0]
+        #          idx=int(bits[1])
+        #          idx2word[idx]=w
+        #          word2idx[w]=idx
+        #          idx2lang[idx]=lang
 
         verbose("Reading index",lang)
         with open(os.path.join(args.idir,"{0}wiki.index".format(lang))) as INDEX:
-            for line in INDEX:
+            for idd,line in enumerate(INDEX):
                 bits=line.strip().split(" == ")
                 pos=int(bits[0])
                 idx=int(bits[1])
                 url=bits[2]
                 title=bits[3]
-                index[idx]=(pos,url,title)
+                if not index.has_key(lang):
+                    index[lang]={}
+                index[lang][idd]=(pos,url,title)
   
     verbose("Loading topics:",args.TOPICS)
     topics=listdb_load(args.TOPICS)
@@ -93,16 +98,52 @@ if __name__ == "__main__":
         idxs=set()
         for term in topic:
             idxs.add(int(term.item))
+        if args.min and len(idxs)<args.min:
+            continue
         topics_.append(idxs)
 
+    topics_docs={}
     for lang in args.LANG:
-        filename_corpus=os.path.join(args.idir,"{0}wiki.corpus".format(lang))
-        corpus=listdb_load(filename_corpus)
-        for topic in topics_:
-            for doc in corpus.ldb:
-                doc_=set()
-                for word in doc:
-                    doc_.add(int(word.item))
-                res=len(doc_.intersection(idxs))*1.0/len(doc_.union(idxs))
-                if res>0.0:
-                    print(res)
+        verbose("Procesing",lang)
+        filename_corpus=os.path.join(args.idir,"{0}wiki.position.corpus".format(lang))
+        for idoc,line in enumerate(codecs.open(filename_corpus)):
+            doc_=[]
+            bits=line.split(" ",4)
+            for word in bits[4]:
+                bits=line.split()
+                term=int(bits[1].split()[0])
+                doc_.append(term)
+            if len(doc_)==0:
+                continue
+            doc_=set(doc_)
+            for itopic,idxs in enumerate(topics_):
+                if len(idxs)==0:
+                    continue
+                res=len(doc_.intersection(idxs))*1.0/max(len(doc_),len(idxs))
+                if res>0.4:
+                    try:
+                        topics_docs[lang]
+                    except KeyError:
+                        topics_docs[lang]={}
+                    try:
+                        topics_docs[lang][itopic].append({'url':index[lang][idoc][1],'title':index[lang][idoc][2],'ol':res})
+                    except KeyError:
+                        topics_docs[lang][itopic]=[{'url':index[lang][idoc][1],'title':index[lang][idoc][2],'ol':res}]
+            verbose("Finish procesing doc",idoc,lang)
+
+    topics_docs_={}
+    for lang in args.LANG:
+        for itopic,ref in topics_docs[lang].iteritems():
+            if not topics_docs_.has_key(itopic):
+                topics_docs_[itopic]={}
+            topics_docs_[itopic][lang]=sorted(ref, key = lambda k : k['ol'], reverse=True)
+    
+    basename=os.path.basename(args.TOPICS)
+    prefix=basename.rsplit('.',1)[0]
+    filename_json=os.path.join(args.odir,"{0}.docs.json".format(prefix))
+   
+    with codecs.open(filename_json,'w','utf8') as JSON:
+        json.dump(topics_docs_, JSON, sort_keys=True,ensure_ascii=False,
+        encoding="utf-8",indent=4, separators=(',', ': '))
+
+
