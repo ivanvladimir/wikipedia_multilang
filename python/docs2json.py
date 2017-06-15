@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     topics_docs_={}
     for lang in args.LANG:
-        if topics_docs_.has_key(lang):
+        if topics_docs.has_key(lang):
             for itopic,ref in topics_docs[lang].iteritems():
                 if not topics_docs_.has_key(itopic):
                     topics_docs_[itopic]={}
