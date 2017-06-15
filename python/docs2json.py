@@ -133,11 +133,12 @@ if __name__ == "__main__":
 
     topics_docs_={}
     for lang in args.LANG:
-        for itopic,ref in topics_docs[lang].iteritems():
-            if not topics_docs_.has_key(itopic):
-                topics_docs_[itopic]={}
-            topics_docs_[itopic][lang]=sorted(ref, key = lambda k : k['ol'], reverse=True)
-    
+        if topics_docs_.has_key(lang):
+            for itopic,ref in topics_docs[lang].iteritems():
+                if not topics_docs_.has_key(itopic):
+                    topics_docs_[itopic]={}
+                topics_docs_[itopic][lang]=sorted(ref, key = lambda k : k['ol'], reverse=True)
+        
     basename=os.path.basename(args.TOPICS)
     prefix=basename.rsplit('.',1)[0]
     filename_json=os.path.join(args.odir,"{0}.docs.json".format(prefix))
