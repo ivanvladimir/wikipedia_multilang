@@ -43,6 +43,9 @@ if __name__ == "__main__":
     p.add_argument("--odir",default='data',
             action="store", dest="odir",
             help="Output dir for documents [data]")
+    p.add_argument("--overlap",default=0.02,type=float,
+            action="store", dest="overlap",
+            help="Minumum overlap [0.02]")
     p.add_argument("--min",default=None,type=int,
             action="store", dest="min",
             help="Minumum number of terms in topics [0]")
@@ -69,15 +72,15 @@ if __name__ == "__main__":
     # Reading vocabulariesa
     verbose("Reading vocabulary")
     for lang in args.LANG:
-    	#  verbose("Reading vocabulary",lang)
-        #  with open(os.path.join(args.idir,"{0}wiki.voca".format(lang))) as LANG:
-        #      for line in LANG:
-        #          bits=line.strip().split(" = ")
-        #          w=bits[0]
-        #          idx=int(bits[1])
-        #          idx2word[idx]=w
-        #          word2idx[w]=idx
-        #          idx2lang[idx]=lang
+        verbose("Reading vocabulary",lang)
+        with open(os.path.join(args.idir,"{0}wiki.voca".format(lang))) as LANG:
+            for line in LANG:
+                bits=line.strip().split(" = ")
+                w=bits[0]
+                idx=int(bits[1])
+                idx2word[idx]=w
+                word2idx[w]=idx
+                idx2lang[idx]=lang
 
         verbose("Reading index",lang)
         with open(os.path.join(args.idir,"{0}wiki.index".format(lang))) as INDEX:
@@ -95,10 +98,16 @@ if __name__ == "__main__":
     topics=listdb_load(args.TOPICS)
     topics_=[]
     for topic in topics.ldb:
-        idxs=set()
+        idxs={}
+        iterms=0
         for term in topic:
-            idxs.add(int(term.item))
-        if args.min and len(idxs)<args.min:
+            if idx2lang.has_key(int(term.item)):
+                try:
+                    idxs[idx2lang[int(term.item)]].add(int(term.item))
+                except KeyError:
+                    idxs[idx2lang[int(term.item)]]=set([int(term.item)])
+            iterms+=1
+        if args.min and iterms<args.min:
             continue
         topics_.append(idxs)
 
@@ -107,20 +116,26 @@ if __name__ == "__main__":
         verbose("Procesing",lang)
         filename_corpus=os.path.join(args.idir,"{0}wiki.position.corpus".format(lang))
         for idoc,line in enumerate(codecs.open(filename_corpus)):
-            doc_=[]
+            doc_={}
             bits=line.split(" ",4)
-            for word in bits[4]:
-                bits=line.split()
-                term=int(bits[1].split()[0])
-                doc_.append(term)
-            if len(doc_)==0:
+            for word in bits[4].split():
+                term=int(word.split(':')[0])
+                if idx2lang.has_key(term):
+                    try:
+                        doc_[idx2lang[term]].append(term)
+                    except KeyError:
+                        doc_[idx2lang[term]]=[term]
+            if not doc_.has_key(lang) or len(doc_[lang])==0:
                 continue
-            doc_=set(doc_)
+            doc_=set(doc_[lang])
             for itopic,idxs in enumerate(topics_):
                 if len(idxs)==0:
                     continue
-                res=len(doc_.intersection(idxs))*1.0/max(len(doc_),len(idxs))
-                if res>0.4:
+                if not idxs.has_key(lang):
+                    res=0.0
+                else:
+                    res=len(doc_.intersection(idxs[lang]))*1.0/max(len(doc_),len(idxs[lang]))
+                if res>args.overlap:
                     try:
                         topics_docs[lang]
                     except KeyError:
@@ -134,6 +149,7 @@ if __name__ == "__main__":
     topics_docs_={}
     for lang in args.LANG:
         if topics_docs.has_key(lang):
+            verbose("hit")
             for itopic,ref in topics_docs[lang].iteritems():
                 if not topics_docs_.has_key(itopic):
                     topics_docs_[itopic]={}
