@@ -33,7 +33,7 @@ import nltk
 random.seed()
 
 from collections import Counter,defaultdict
-punct=re.compile("[^\s]+", re.UNICODE)
+punct=re.compile("(\w[\w']*\w|\w)", re.UNICODE)
 
 def line2words(line,sws):
     return [w for w in nltk.word_tokenize(line.lower()) 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     sw={}
     for lang in args.LANG:
         sw[lang]=set()
-        with open(os.path.join(args.swdir,"{0}.txt".format(lang))) as FILE:
+        with codecs.open(os.path.join(args.swdir,"{0}.txt".format(lang)),'utf8') as FILE:
             for line in FILE:
                 line=line.strip()
                 if line.startswith("#"):

@@ -29,7 +29,7 @@ class SMHTopicDiscovery(BaseEstimator):
                  number_of_tuples = None,
                  table_size = 2**24,
                  cooccurrence_threshold = 0.14, 
-                 min_set_size = 3,
+                 min_set_size = 5,
                  cluster_tuple_size = 3,
                  cluster_number_of_tuples = 255,
                  cluster_table_size = 2**24,
@@ -86,6 +86,10 @@ if __name__ == "__main__":
     p.add_argument("-l","--number_tuples",default=False,
                 action="store_true", dest="l",
                 help="Turn on second value op pair as parameter l, otherwise s*")
+    p.add_argument("--sufix",default='',
+            action="store", dest="sufix",
+            help="Sufijo [data]")
+ 
     p.add_argument("--idir",default='data',
             action="store", dest="idir",
             help="Input dir for documents [data]")
@@ -94,9 +98,11 @@ if __name__ == "__main__":
             help="Output dir for documents [data]")
     p.add_argument("--cutoff",default=None,type=int,
         action="store", dest='cutoff',help="Cutoff of topics [Off]")
+    p.add_argument("--min_set_size",default=5,type=int,
+            action="store", dest='min_set_size',help="Minimum size of sets [5]")
     p.add_argument("--min_cluster_size",default=5,type=int,
             action="store", dest='min_cluster_size',help="Minimum size of cluster for default clustering[3]")
-    p.add_argument("--thres",default=0.9,type=float,
+    p.add_argument("--thres",default=0.7,type=float,
             action="store", dest='thres',
             help="Threshold for clustering")
     p.add_argument("-v", "--verbose",
@@ -127,7 +133,7 @@ if __name__ == "__main__":
     verbose("Reading vocabulary")
     for lang in opts.LANG:
     	verbose("Reading vocabulary",lang)
-        with open(os.path.join(opts.idir,"{0}wiki.voca".format(lang))) as LANG:
+        with open(os.path.join(opts.idir,"{0}wiki{1}.voca".format(lang,opts.sufix))) as LANG:
             for line in LANG:
                 bits=line.strip().split(" = ")
                 w=bits[0]
@@ -157,6 +163,7 @@ if __name__ == "__main__":
                               table_size = 2**24,
                               number_of_tuples = l,
                               min_cluster_size= opts.min_cluster_size,
+                              min_set_size= opts.min_set_size,
                               overlap = opts.thres)
         
 	verbose("Discovering topics")    
@@ -168,11 +175,11 @@ if __name__ == "__main__":
 
 	basename=os.path.basename(opts.IFS)
         prefix=basename.split('.',1)[0]
-        filename_model=os.path.join(opts.odir,"{0}.r_{1}_l_{2}.model".format(prefix,r,l))
+        filename_model=os.path.join(opts.odir,"{0}.r_{1}_l_{2}_{3}_{4}_{5}.model".format(prefix,r,l,opts.min_set_size,opts.min_cluster_size,opts.thres))
         verbose("Saving model to",filename_model)
         model.models.save(filename_model)
 
-        filename_topics=os.path.join(opts.odir,"{0}.r_{1}_l_{2}.topics".format(prefix,r,l))
+        filename_topics=os.path.join(opts.odir,"{0}.r_{1}_l_{2}_{3}_{4}_{5}.topics".format(prefix,r,l,opts.min_set_size,opts.min_cluster_size,opts.thres))
         verbose("Saving topics to",filename_topics)
         with open(filename_topics,'w') as TOPICS:
 	    for m in model.models.ldb:
