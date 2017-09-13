@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 # -*- coding: utf-8
 # ----------------------------------------------------------------------
@@ -30,6 +31,7 @@ from smh import listdb_load, rng_init, SMHDiscoverer, rng_init
 import re
 import codecs
 import json
+from collections import Counter
 
 
 if __name__ == "__main__":
@@ -54,7 +56,7 @@ if __name__ == "__main__":
             help="Wikipedia language code")
     args = p.parse_args()
 
-    # prepara función de verbose
+    # prepara funcion de verbose
     if args.verbose:
         def verbose(*args):
             print(*args)
@@ -80,22 +82,43 @@ if __name__ == "__main__":
     verbose("Loading topics:",args.TOPICS)
     topics=listdb_load(args.TOPICS)
     topics_=[]
+    topics__=[]
+    objects={}
     for topic in topics.ldb:
         topic_={}
         topic_['id']=len(topics_)
         words=[]
+        objects={}
+        words_=Counter()
         for term in topic:
             topic__={}
             idx=int(term.item)
             freq=term.freq
             topic__['Word']=idx2word[idx]  
             topic__['Language']=idx2lang[idx]  
-            topic__['Ocurrences']=freq  
+            topic__['Occurrences']=freq
+            try:
+               objects[idx2lang[idx]]+=freq
+            except KeyError:
+               objects[idx2lang[idx]]=freq
             words.append(topic__)
+            words_[idx2word[idx]]=freq
         if args.min and len(words)<args.min:
             continue
-        topic_['words']=words
+        topic_['details']=[]
+        topic_['topwords']=[w for w,x in words_.most_common(10)]
+        size=0
+        for k,v in  objects.items():
+             topic_['details'].append({'Language':k,'NumberOfWords':v})
+             size+=v
+        topic_['size']=size
         topics_.append(topic_)
+        topics__.append([])
+        topics__[-1]={
+                "id":len(topics_),
+                "words":words,
+                "details":topic_['details']
+            }
 
     basename=os.path.basename(args.TOPICS)
     prefix=basename.rsplit('.',1)[0]
@@ -104,5 +127,10 @@ if __name__ == "__main__":
     with codecs.open(filename_json,'w','utf8') as JSON:
         json.dump(topics_, JSON, sort_keys=True,ensure_ascii=False,
         encoding="utf-8",indent=4, separators=(',', ': '))
+
+    for topic in topics__:
+        with codecs.open(str(topic['id'])+".json",'w','utf8') as JSON:
+            json.dump(topic, JSON, sort_keys=True,ensure_ascii=False,
+            encoding="utf-8",indent=4, separators=(',', ': '))
 
 
